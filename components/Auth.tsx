@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import { Alert, StyleSheet, View, AppState } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Button, Input } from "@rneui/themed";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
+import * as Linking from "expo-linking";
+
+const redirectTo = makeRedirectUri();
 
 // Tells Supabase Auth to continuously refresh the session automatically if
 // the app is in the foreground. When this is added, you will continue to receive
@@ -19,6 +24,19 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const createSessionFromUrl = async (url: string) => {
+    const { params, errorCode } = QueryParams.getQueryParams(url);
+    if (errorCode) throw new Error(errorCode);
+    const { access_token, refresh_token } = params;
+    if (!access_token) return;
+    const { data, error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    });
+    if (error) throw error;
+    return data.session;
+  };
 
   async function signInWithEmail() {
     setLoading(true);
@@ -47,6 +65,18 @@ export default function Auth() {
     setLoading(false);
   }
 
+  async function signInWithOtp() {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
+
+    if (error) Alert.alert(error.message);
+    setLoading(false);
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.verticallySpaced, styles.mt20]}>
@@ -59,7 +89,7 @@ export default function Auth() {
           autoCapitalize={"none"}
         />
       </View>
-      <View style={styles.verticallySpaced}>
+      {/* <View style={styles.verticallySpaced}>
         <Input
           label="Password"
           leftIcon={{ type: "font-awesome", name: "lock" }}
@@ -69,21 +99,21 @@ export default function Auth() {
           placeholder="Password"
           autoCapitalize={"none"}
         />
-      </View>
+      </View> */}
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Button
-          title="Sign in"
+          title="Send Magic Link"
           disabled={loading}
-          onPress={() => signInWithEmail()}
+          onPress={() => signInWithOtp()}
         />
       </View>
-      <View style={styles.verticallySpaced}>
+      {/* <View style={styles.verticallySpaced}>
         <Button
           title="Sign up"
           disabled={loading}
           onPress={() => signUpWithEmail()}
         />
-      </View>
+      </View> */}
     </View>
   );
 }
