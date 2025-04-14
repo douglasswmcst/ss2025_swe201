@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Alert, StyleSheet, View, AppState } from "react-native";
+import { Alert, StyleSheet, View, AppState, Text } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Button, Input } from "@rneui/themed";
 import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
 
 const redirectTo = makeRedirectUri();
 
@@ -13,19 +12,17 @@ const redirectTo = makeRedirectUri();
 // the app is in the foreground. When this is added, you will continue to receive
 // `onAuthStateChange` events with the `TOKEN_REFRESHED` or `SIGNED_OUT` event
 // if the user's session is terminated. This should only be registered once.
-AppState.addEventListener("change", (state) => {
-  if (state === "active") {
-    supabase.auth.startAutoRefresh();
-  } else {
-    supabase.auth.stopAutoRefresh();
-  }
-});
+// AppState.addEventListener("change", (state) => {
+//   if (state === "active") {
+//     supabase.auth.startAutoRefresh();
+//   } else {
+//     supabase.auth.stopAutoRefresh();
+//   }
+// });
 
-export default function Auth() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+export default function verifyotp({ phone }: { phone: string }) {
+  const [otp, setOtp] = useState("");
+  const [submittedPhone, setSubmittedPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   const createSessionFromUrl = async (url: string) => {
@@ -41,59 +38,23 @@ export default function Auth() {
     return data.session;
   };
 
-  async function signInWithEmail() {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
-
-    if (error) Alert.alert(error.message);
-    setLoading(false);
-  }
-
-  async function signUpWithEmail() {
-    setLoading(true);
+  async function verifyOtp() {
     const {
       data: { session },
       error,
-    } = await supabase.auth.signUp({
-      email: email,
-      password: password,
+    } = await supabase.auth.verifyOtp({
+      phone: "13334445555",
+      token: "123456",
+      type: "sms",
     });
 
-    if (error) Alert.alert(error.message);
-    if (!session)
-      Alert.alert("Please check your inbox for email verification!");
-    setLoading(false);
-  }
-
-  async function signInWithOtp() {
-    let payload = "+975" + phone;
-    const { data, error } = await supabase.auth.signInWithOtp({
-      phone: payload,
-    });
-    console.log("I AM BEING TAPPED");
-
-    // const { error } = await supabase.auth.signInWithOtp({
-    //   email: email,
-    //   options: {
-    //     emailRedirectTo: redirectTo,
-    //   },
-    // });
-
-    if (data && !error) {
-      // router.navigate({ pathname: '/test', params: { phone: payload } });
-      console.log(data);
-      router.navigate({ pathname: "/test" });
-
-      // Alert.alert(JSON.stringify(data));
+    if (session && !error) {
+      console.log(session);
     }
     if (error) {
       console.log(error);
       Alert.alert(error.message);
     }
-    setLoading(false);
   }
 
   return (
@@ -108,13 +69,16 @@ export default function Auth() {
           autoCapitalize={"none"}
         />
       </View> */}
+      <View>
+        <Text>Enter the OTP sent to your phone number</Text>
+      </View>
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Input
-          label="Phone Number"
-          leftIcon={{ type: "font-awesome", name: "phone" }}
-          onChangeText={(text) => setPhone(text)}
-          value={phone}
-          placeholder="17943181"
+          label="Enter OTP"
+          leftIcon={{ type: "font-awesome", name: "lock" }}
+          onChangeText={(text) => setOtp(text)}
+          value={otp}
+          placeholder="123456"
           autoCapitalize={"none"}
         />
       </View>
@@ -131,9 +95,9 @@ export default function Auth() {
       </View> */}
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Button
-          title="Send OTP"
+          title="Verify OTP"
           disabled={loading}
-          onPress={() => signInWithOtp()}
+          onPress={() => verifyOtp()}
         />
       </View>
       {/* <View style={styles.verticallySpaced}>
